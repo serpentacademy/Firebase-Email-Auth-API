@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+      
+      
+        match /users/{userId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+        match /checkout-session/{userId}/session/{docId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+    }
+    match /push-subscribers/{userId}{
+    allow read, update, delete, create: if request.auth != null && request.auth.uid == userId;
+    }
+        match /prompt/{promptId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth.uid == "ObXmAOYKUPaXpo34UcT7U6JbPYw2"
+    }
+            match /meta_tags/{metatag} {
+      allow read: if true;
+      allow create, update, delete: if request.auth.uid == "ObXmAOYKUPaXpo34UcT7U6JbPYw2"
+    }
+            match /categories/list {
+      allow read: if true;
+      allow create, update, delete: if request.auth.uid == "ObXmAOYKUPaXpo34UcT7U6JbPYw2"
+    }
+    }
+    
+  }
+}
