@@ -13,7 +13,13 @@
   import * as dotenv from 'dotenv'
   dotenv.config() 
 
+interface Payload{
+  uid: string;
+  email: string;
+  exp?: number;              // Expiration time (in seconds since epoch)
 
+
+}
   const express = require('express');
   const app = express();
   const db = getFirestore();
@@ -21,7 +27,7 @@
   // Middleware to authenticate Firebase users
 
   // Middleware to authenticate requests using JWT
-  const authenticate = (req:any, res:any, next:any) => {
+/*   const authenticate = (req:any, res:any, next:any) => {
     const authorization = req.headers.authorization;
 
     if (!authorization || !authorization.startsWith('Bearer ')) {
@@ -43,18 +49,18 @@
 
     });
     
-  };
+  }; */
     
     // Apply the authentication middleware to all routes
-    app.use(authenticate);
+    //app.use(authenticate);
     app.use(express.json());
 
     
 
-    app.get('/:id', (req:any, res:any) => {
+/*     app.get('/:id', (req:any, res:any) => {
       // Only authenticated users can access this route
       res.send({ message: 'Authenticated user can access this route', userId: req.user.uid });
-    });
+    }); */
     
     app.post('/', (req:any, res:any) => {
       // Handle creation logic
@@ -66,7 +72,6 @@
     // POST request handler for creating a new user
   app.post('/createUser', async (req:any, res:any) => {
       const { email, password } = req.body;
-    
       if (!email || !password) {
         return res.status(400).send({ message: 'Email and password are required' });
       }
@@ -91,10 +96,18 @@
           email,
           verified: false,
         });
+        
     
         // Send the verification email
         await sendVerificationEmail(email, userRecord.uid, res);
     
+
+        let payload: Payload = {uid:userRecord.uid, email:email, exp:getExpirationTimestamp()}
+        let token= signJwtToken(payload)
+              
+            // Send the token in the response body
+    res.setHeader('Authorization', `Bearer ${token}`);
+
         return res.status(201).send({
           message: 'User created successfully. Please verify your email.',
           uid: userRecord.uid,
@@ -114,6 +127,7 @@
 
     // Helper function to send a verification email
   const sendVerificationEmail = async (email: string, uid: string, res:any) => {
+    
     async function sendCustomEmailVerification(email: string, link: string){
       const mailgunApiKey = process.env.MAILGUNAPIKEY;
       const mailgunDomain = process.env.MAILGUNDOMAIN;
@@ -131,13 +145,15 @@
         html: html,
       };
       
+      //send Token
+
       return mg.messages().send(data);
     
     }
     let html = "Welcome 🚀🌓! Please verify your email 👉<a href='"+link+"'>Click Here to Verify</a>"
+    
   await sendEmail(email, "Welcome to Quantum Compass",html)
-
-  }
+}
     try{
     const user = await getAuth().getUserByEmail(email);
     if (true) {
@@ -169,6 +185,17 @@
   }
   };
     
+  // Function to generate the current timestamp and add 30 minutes
+  function getExpirationTimestamp(): number {
+    const currentTimeInSeconds = Math.floor(Date.now() / 1000); // Current time in seconds since epoch
+    const expirationTimeInSeconds = 30 * 60; // 30 minutes in seconds
+    return currentTimeInSeconds + expirationTimeInSeconds;
+  }
+  
+  function signJwtToken(payload:Payload){
+   const token = jwt.sign(payload, process.env.JWT)
+   return token
+  }
     
     // Expose Express API as a Firebase Cloud Function
     exports.wid = onRequest(app);
